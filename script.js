@@ -22,9 +22,7 @@
   const downloadBtn = document.getElementById('downloadBtn');
   const resetBtn = document.getElementById('resetBtn');
   const downloadHint = document.getElementById('downloadHint');
-  const downloadHintText = downloadHint.querySelector('.hint-text');
-  const fallbackLink = document.getElementById('fallbackLink');
-  const openInTab = document.getElementById('openInTab');
+  const downloadHintText = downloadHint ? downloadHint.querySelector('.hint-text') : null;
 
   // 检测移动端（iOS Safari / Android Chrome 等对 a[download] 支持不完善）
   const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(
@@ -112,17 +110,12 @@
     state.compressedMime = mime;
     compressedImg.src = dataUrl;
 
-    // 设置备选链接
-    openInTab.href = dataUrl;
-
     // 移动端显示提示
     if (isMobile) {
-      downloadHint.hidden = false;
-      fallbackLink.hidden = false;
-      downloadHintText.textContent = '点击《下载压缩图片》后，长按图片选择保存图片';
+      if (downloadHint) downloadHint.hidden = false;
+      if (downloadHintText) downloadHintText.textContent = '点击下载压缩图片后，长按图片选择保存图片';
     } else {
-      downloadHint.hidden = true;
-      fallbackLink.hidden = true;
+      if (downloadHint) downloadHint.hidden = true;
     }
 
     // 估算压缩后大小
