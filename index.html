@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>图片处理工具</title>
+  <link rel="icon" type="image/svg+xml" href="favicon.svg" />
+  <link rel="stylesheet" href="style.css" />
+  <!-- 32*32 浏览器标签图标 favicon -->
+
+</head>
+<body>
+  <div class="app">
+    <header class="header">
+      <h1>图片处理工具</h1>
+      <p class="subtitle">上传 · 预览 · 压缩 · 下载</p>
+    </header>
+
+    <main class="main">
+      <!-- 上传区 -->
+      <section class="panel">
+        <h2 class="panel-title">1. 选择图片</h2>
+        <label class="upload-box" id="dropArea">
+          <input type="file" id="fileInput" accept="image/*" hidden />
+          <div class="upload-inner">
+            <div class="upload-icon">📁</div>
+            <div class="upload-text">点击选择图片，或将图片拖拽到此处</div>
+            <div class="upload-hint">支持 JPG / PNG / WEBP / GIF / BMP 等格式</div>
+          </div>
+        </label>
+      </section>
+
+      <!-- 参数区 -->
+      <section class="panel" id="paramsPanel" hidden>
+        <h2 class="panel-title">2. 压缩参数</h2>
+
+        <div class="preset-block">
+          <div class="preset-label">尺寸快捷选项 (300 DPI)</div>
+          <div class="preset-list" id="presetList">
+            <button type="button" class="preset-chip" data-w="295" data-h="413">1 寸 <span>2.5×3.5cm</span></button>
+            <button type="button" class="preset-chip" data-w="260" data-h="378">小1寸 <span>2.2×3.2cm</span></button>
+            <button type="button" class="preset-chip" data-w="390" data-h="567">大1寸 <span>3.3×4.8cm</span></button>
+            <button type="button" class="preset-chip" data-w="413" data-h="579">2 寸 <span>3.5×4.9cm</span></button>
+            <button type="button" class="preset-chip" data-w="413" data-h="531">小2寸 <span>3.5×4.5cm</span></button>
+            <button type="button" class="preset-chip" data-w="413" data-h="626">大2寸 <span>3.5×5.3cm</span></button>
+            <button type="button" class="preset-chip" data-w="640" data-h="480">电脑壁纸 <span>4:3</span></button>
+            <button type="button" class="preset-chip" data-w="1920" data-h="1080">全高清 <span>16:9</span></button>
+            <button type="button" class="preset-chip" data-w="1080" data-h="1080">方形 <span>1:1</span></button>
+            <button type="button" class="preset-chip preset-clear" data-w="" data-h="">自定义</button>
+          </div>
+        </div>
+
+        <div class="params">
+          <div class="param-row">
+            <label for="widthInput">宽度 (px)</label>
+            <input type="number" id="widthInput" min="1" placeholder="原图宽度" />
+            <span class="param-tip" id="widthTip">原图: -</span>
+          </div>
+          <div class="param-row">
+            <label for="heightInput">高度 (px)</label>
+            <input type="number" id="heightInput" min="1" placeholder="原图高度" />
+            <span class="param-tip" id="heightTip">原图: -</span>
+          </div>
+          <div class="param-row">
+            <label class="checkbox-row">
+              <input type="checkbox" id="keepRatio" checked />
+              <span>保持宽高比</span>
+            </label>
+          </div>
+          <div class="param-row">
+            <label for="qualityInput">画质 (1 - 100)</label>
+            <div class="quality-wrap">
+              <input type="range" id="qualityRange" min="1" max="100" value="80" />
+              <input type="number" id="qualityInput" min="1" max="100" value="80" />
+            </div>
+          </div>
+          <div class="param-row">
+            <label for="formatSelect">输出格式</label>
+            <select id="formatSelect">
+              <option value="image/jpeg">JPEG</option>
+              <option value="image/png">PNG</option>
+              <option value="image/webp">WEBP</option>
+            </select>
+          </div>
+        </div>
+      </section>
+
+      <!-- 预览对比区 -->
+      <section class="panel" id="previewPanel" hidden>
+        <h2 class="panel-title">3. 预览对比</h2>
+        <div class="preview-grid">
+          <div class="preview-card">
+            <div class="preview-label">原图</div>
+            <div class="preview-img-wrap">
+              <img id="originalImg" alt="原图预览" />
+            </div>
+            <div class="preview-meta" id="originalMeta">-</div>
+          </div>
+          <div class="preview-card">
+            <div class="preview-label">压缩后</div>
+            <div class="preview-img-wrap">
+              <img id="compressedImg" alt="压缩后预览" />
+            </div>
+            <div class="preview-meta" id="compressedMeta">-</div>
+          </div>
+        </div>
+
+        <div class="actions">
+          <button class="btn btn-primary" id="downloadBtn">下载压缩图片</button>
+          <button class="btn btn-ghost" id="resetBtn">重新选择</button>
+        </div>
+      </section>
+    </main>
+
+    <footer class="footer">
+      <span>纯前端实现 · 本地处理 · 文件不上传服务器</span>
+    </footer>
+  </div>
+
+  <script src="script.js"></script>
+</body>
+</html>
