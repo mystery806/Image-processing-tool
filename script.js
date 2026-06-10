@@ -110,14 +110,6 @@
     state.compressedMime = mime;
     compressedImg.src = dataUrl;
 
-    // 移动端显示提示
-    if (isMobile) {
-      if (downloadHint) downloadHint.hidden = false;
-      if (downloadHintText) downloadHintText.textContent = '点击下载压缩图片后，长按图片选择保存图片';
-    } else {
-      if (downloadHint) downloadHint.hidden = true;
-    }
-
     // 估算压缩后大小
     const base64 = dataUrl.split(',')[1] || '';
     const size = Math.floor((base64.length * 3) / 4);
@@ -130,8 +122,18 @@
       ? `减少 ${ratio}%`
       : `增加 ${Math.abs(ratio)}%`;
 
-    compressedMeta.innerHTML =
-      `尺寸: <strong>${w} × ${h}</strong> · 大小: <strong>${formatBytes(size)}</strong> · ${ratioText}`;
+    if (compressedMeta) {
+      compressedMeta.innerHTML =
+        `尺寸: <strong>${w} × ${h}</strong> · 大小: <strong>${formatBytes(size)}</strong> · ${ratioText}`;
+    }
+
+    // 移动端显示提示
+    if (isMobile) {
+      if (downloadHint) downloadHint.hidden = false;
+      if (downloadHintText) downloadHintText.textContent = '点击下载压缩图片后，长按图片选择保存图片';
+    } else {
+      if (downloadHint) downloadHint.hidden = true;
+    }
   }
 
   // ===== 文件选择回调 =====

@@ -4,6 +4,11 @@
   padding: 0;
 }
 
+/* 兜底：确保 HTML hidden 属性始终生效（避免被 display: flex 等覆盖） */
+[hidden] {
+  display: none !important;
+}
+
 html, body {
   height: 100%;
 }
@@ -343,6 +348,10 @@ body {
   gap: 8px;
   text-align: left;
   line-height: 1.5;
+}
+
+.download-hint[hidden] {
+  display: none;
 }
 
 .download-hint .hint-icon {
