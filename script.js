@@ -119,9 +119,7 @@
     if (isMobile) {
       downloadHint.hidden = false;
       fallbackLink.hidden = false;
-      downloadHintText.textContent = isIOS
-        ? 'iOS 设备点击「在新窗口打开」后，长按图片选择「存储图像」'
-        : '点击「在新窗口打开」后，长按图片选择「保存图片」';
+      downloadHintText.textContent = '点击《下载压缩图片》后，长按图片选择保存图片';
     } else {
       downloadHint.hidden = true;
       fallbackLink.hidden = true;
