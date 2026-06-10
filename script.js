@@ -21,6 +21,16 @@
   const compressedMeta = document.getElementById('compressedMeta');
   const downloadBtn = document.getElementById('downloadBtn');
   const resetBtn = document.getElementById('resetBtn');
+  const downloadHint = document.getElementById('downloadHint');
+  const downloadHintText = downloadHint.querySelector('.hint-text');
+  const fallbackLink = document.getElementById('fallbackLink');
+  const openInTab = document.getElementById('openInTab');
+
+  // 检测移动端（iOS Safari / Android Chrome 等对 a[download] 支持不完善）
+  const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(
+    navigator.userAgent
+  );
+  const isIOS = /iPhone|iPad|iPod/i.test(navigator.userAgent);
 
   // 状态
   const state = {
@@ -99,7 +109,23 @@
 
     const dataUrl = canvas.toDataURL(mime, exportQuality);
     state.compressedDataUrl = dataUrl;
+    state.compressedMime = mime;
     compressedImg.src = dataUrl;
+
+    // 设置备选链接
+    openInTab.href = dataUrl;
+
+    // 移动端显示提示
+    if (isMobile) {
+      downloadHint.hidden = false;
+      fallbackLink.hidden = false;
+      downloadHintText.textContent = isIOS
+        ? 'iOS 设备点击「在新窗口打开」后，长按图片选择「存储图像」'
+        : '点击「在新窗口打开」后，长按图片选择「保存图片」';
+    } else {
+      downloadHint.hidden = true;
+      fallbackLink.hidden = true;
+    }
 
     // 估算压缩后大小
     const base64 = dataUrl.split(',')[1] || '';
@@ -264,6 +290,26 @@
     const mime = formatSelect.value;
     const ext = getExtFromMime(mime);
     const baseName = state.file ? getBaseName(state.file.name) : 'image';
+
+    // 移动端（特别是 iOS Safari）不支持 a[download]，在新标签页中打开更可靠
+    if (isMobile) {
+      const win = window.open();
+      if (win) {
+        win.document.write(
+          `<title>${baseName}_compressed.${ext}</title>` +
+          `<meta name="viewport" content="width=device-width,initial-scale=1">` +
+          `<style>html,body{margin:0;height:100%;background:#000;display:flex;align-items:center;justify-content:center}img{max-width:100%;max-height:100%;object-fit:contain}</style>` +
+          `<img src="${state.compressedDataUrl}" />`
+        );
+        win.document.close();
+      } else {
+        // 浏览器拦截弹窗时退化为当前页跳转
+        window.location.href = state.compressedDataUrl;
+      }
+      return;
+    }
+
+    // 桌面端：使用 a[download] 触发下载
     const a = document.createElement('a');
     a.href = state.compressedDataUrl;
     a.download = `${baseName}_compressed.${ext}`;

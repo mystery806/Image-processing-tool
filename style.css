@@ -329,6 +329,48 @@ body {
   background: #eef2ff;
 }
 
+/* 移动端下载提示 */
+.download-hint {
+  margin-top: 16px;
+  padding: 10px 14px;
+  background: #fef3c7;
+  border: 1px solid #fcd34d;
+  border-radius: 8px;
+  font-size: 13px;
+  color: #92400e;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  text-align: left;
+  line-height: 1.5;
+}
+
+.download-hint .hint-icon {
+  font-size: 18px;
+  flex-shrink: 0;
+}
+
+.fallback-link {
+  margin-top: 10px;
+  text-align: center;
+}
+
+.fallback-link a {
+  display: inline-block;
+  padding: 8px 16px;
+  font-size: 13px;
+  color: #4f46e5;
+  background: #eef2ff;
+  border-radius: 6px;
+  text-decoration: none;
+  transition: background 0.18s;
+  word-break: break-all;
+}
+
+.fallback-link a:hover {
+  background: #c7d2fe;
+}
+
 /* 页脚 */
 .footer {
   text-align: center;
