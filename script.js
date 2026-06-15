@@ -23,6 +23,8 @@
   const resetBtn = document.getElementById('resetBtn');
   const downloadHint = document.getElementById('downloadHint');
   const downloadHintText = downloadHint ? downloadHint.querySelector('.hint-text') : null;
+  const bgColorRow = document.getElementById('bgColorRow');
+  const colorOptions = document.getElementById('colorOptions');
 
   // 检测移动端（iOS Safari / Android Chrome 等对 a[download] 支持不完善）
   const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(
@@ -39,7 +41,9 @@
     originalSize: 0,
     compressedDataUrl: '',
     compressedSize: 0,
+    compressedMime: '',
     aspectRatio: 1,
+    bgColor: '',
   };
 
   // ===== 工具函数 =====
@@ -57,6 +61,82 @@
       case 'image/webp': return 'webp';
       default: return 'png';
     }
+  }
+
+  function hexToRgb(hex) {
+    if (!hex) return { r: 255, g: 255, b: 255 };
+    let h = hex.replace('#', '');
+    if (h.length === 3) h = h[0] + h[0] + h[1] + h[1] + h[2] + h[2];
+    return {
+      r: parseInt(h.substr(0, 2), 16),
+      g: parseInt(h.substr(2, 2), 16),
+      b: parseInt(h.substr(4, 2), 16),
+    };
+  }
+
+  // 采样原图背景色：取上下左右四边的中位色（每边 25 个点，共 100 个点）
+  function sampleBgColor(ctx, w, h) {
+    const data = ctx.getImageData(0, 0, w, h).data;
+    const rs = [], gs = [], bs = [];
+
+    // 上下边采样
+    for (let i = 0; i < 25; i++) {
+      const x = Math.floor((i / 24) * (w - 1));
+      const yTop = Math.floor(h * 0.02);
+      const yBot = h - 1 - yTop;
+      const iTop = (yTop * w + x) * 4;
+      const iBot = (yBot * w + x) * 4;
+      rs.push(data[iTop], data[iBot]);
+      gs.push(data[iTop + 1], data[iBot + 1]);
+      bs.push(data[iTop + 2], data[iBot + 2]);
+    }
+    // 左右边采样
+    for (let i = 0; i < 25; i++) {
+      const y = Math.floor((i / 24) * (h - 1));
+      const xLeft = Math.floor(w * 0.02);
+      const xRight = w - 1 - xLeft;
+      const iL = (y * w + xLeft) * 4;
+      const iR = (y * w + xRight) * 4;
+      rs.push(data[iL], data[iR]);
+      gs.push(data[iL + 1], data[iR + 1]);
+      bs.push(data[iL + 2], data[iR + 2]);
+    }
+
+    const median = (arr) => {
+      arr.sort((a, b) => a - b);
+      return arr[Math.floor(arr.length / 2)];
+    };
+    return { r: median(rs), g: median(gs), b: median(bs) };
+  }
+
+  // 用指定颜色替换原图背景（色度键 + 软边缘）
+  function replaceBackground(ctx, w, h, newColor) {
+    const oldColor = sampleBgColor(ctx, w, h);
+    const newRgb = hexToRgb(newColor);
+    const imgData = ctx.getImageData(0, 0, w, h);
+    const data = imgData.data;
+
+    for (let i = 0; i < data.length; i += 4) {
+      const a = data[i + 3];
+      if (a < 10) continue;
+      const r = data[i], g = data[i + 1], b = data[i + 2];
+      const dr = r - oldColor.r;
+      const dg = g - oldColor.g;
+      const db = b - oldColor.b;
+      const dist = Math.sqrt(dr * dr + dg * dg + db * db);
+
+      // 软边缘：dist < 80 完全替换；80-160 渐变；>160 不动
+      let alpha = 0;
+      if (dist < 80) alpha = 1;
+      else if (dist < 160) alpha = (160 - dist) / 80;
+
+      if (alpha > 0) {
+        data[i]     = Math.round(r * (1 - alpha) + newRgb.r * alpha);
+        data[i + 1] = Math.round(g * (1 - alpha) + newRgb.g * alpha);
+        data[i + 2] = Math.round(b * (1 - alpha) + newRgb.b * alpha);
+      }
+    }
+    ctx.putImageData(imgData, 0, 0);
   }
 
   function getBaseName(name) {
@@ -87,52 +167,61 @@
   async function compress() {
     if (!state.originalDataUrl) return;
 
-    const targetW = parseInt(widthInput.value, 10);
-    const targetH = parseInt(heightInput.value, 10);
-    const w = isNaN(targetW) || targetW <= 0 ? state.originalWidth : targetW;
-    const h = isNaN(targetH) || targetH <= 0 ? state.originalHeight : targetH;
-    const quality = Math.min(1, Math.max(0.01, parseInt(qualityInput.value, 10) / 100));
-    const mime = formatSelect.value;
+    try {
+      const targetW = parseInt(widthInput.value, 10);
+      const targetH = parseInt(heightInput.value, 10);
+      const w = isNaN(targetW) || targetW <= 0 ? state.originalWidth : targetW;
+      const h = isNaN(targetH) || targetH <= 0 ? state.originalHeight : targetH;
+      const quality = Math.min(1, Math.max(0.01, parseInt(qualityInput.value, 10) / 100));
+      const mime = formatSelect.value;
 
-    const canvas = document.createElement('canvas');
-    canvas.width = w;
-    canvas.height = h;
-    const ctx = canvas.getContext('2d');
+      const canvas = document.createElement('canvas');
+      canvas.width = w;
+      canvas.height = h;
+      const ctx = canvas.getContext('2d');
 
-    // PNG 无损，不应用 quality 参数
-    const exportQuality = mime === 'image/png' ? undefined : quality;
+      // PNG 无损，不应用 quality 参数
+      const exportQuality = mime === 'image/png' ? undefined : quality;
 
-    const img = await loadImage(state.originalDataUrl);
-    ctx.drawImage(img, 0, 0, w, h);
+      const img = await loadImage(state.originalDataUrl);
+      ctx.drawImage(img, 0, 0, w, h);
 
-    const dataUrl = canvas.toDataURL(mime, exportQuality);
-    state.compressedDataUrl = dataUrl;
-    state.compressedMime = mime;
-    compressedImg.src = dataUrl;
+      // 证件照背景色替换（色度键）
+      if (state.bgColor) {
+        replaceBackground(ctx, w, h, state.bgColor);
+      }
 
-    // 估算压缩后大小
-    const base64 = dataUrl.split(',')[1] || '';
-    const size = Math.floor((base64.length * 3) / 4);
-    state.compressedSize = size;
+      const dataUrl = canvas.toDataURL(mime, exportQuality);
+      state.compressedDataUrl = dataUrl;
+      state.compressedMime = mime;
+      compressedImg.src = dataUrl;
 
-    const ratio = state.originalSize > 0
-      ? ((1 - size / state.originalSize) * 100).toFixed(1)
-      : '0.0';
-    const ratioText = size <= state.originalSize
-      ? `减少 ${ratio}%`
-      : `增加 ${Math.abs(ratio)}%`;
+      // 估算压缩后大小
+      const base64 = dataUrl.split(',')[1] || '';
+      const size = Math.floor((base64.length * 3) / 4);
+      state.compressedSize = size;
 
-    if (compressedMeta) {
-      compressedMeta.innerHTML =
-        `尺寸: <strong>${w} × ${h}</strong> · 大小: <strong>${formatBytes(size)}</strong> · ${ratioText}`;
-    }
+      const ratio = state.originalSize > 0
+        ? ((1 - size / state.originalSize) * 100).toFixed(1)
+        : '0.0';
+      const ratioText = size <= state.originalSize
+        ? `减少 ${ratio}%`
+        : `增加 ${Math.abs(ratio)}%`;
 
-    // 移动端显示提示
-    if (isMobile) {
-      if (downloadHint) downloadHint.hidden = false;
-      if (downloadHintText) downloadHintText.textContent = '点击下载压缩图片后，长按图片选择保存图片';
-    } else {
-      if (downloadHint) downloadHint.hidden = true;
+      if (compressedMeta) {
+        compressedMeta.innerHTML =
+          `尺寸: <strong>${w} × ${h}</strong> · 大小: <strong>${formatBytes(size)}</strong> · ${ratioText}`;
+      }
+
+      // 移动端显示提示
+      if (isMobile) {
+        if (downloadHint) downloadHint.hidden = false;
+        if (downloadHintText) downloadHintText.textContent = '点击下载压缩图片后，长按图片选择保存图片';
+      } else {
+        if (downloadHint) downloadHint.hidden = true;
+      }
+    } catch (err) {
+      console.error('压缩失败:', err);
     }
   }
 
@@ -171,6 +260,16 @@
     if (file.type === 'image/png') formatSelect.value = 'image/png';
     else if (file.type === 'image/webp') formatSelect.value = 'image/webp';
     else formatSelect.value = 'image/jpeg';
+
+    // 自动识别证件照：高 > 宽 且 比例在常见证件照范围内
+    const ratio = state.originalWidth / state.originalHeight;
+    if (ratio < 0.9) {
+      bgColorRow.hidden = false;
+    } else {
+      bgColorRow.hidden = true;
+      state.bgColor = '';
+      colorOptions.querySelectorAll('.color-swatch').forEach((c) => c.classList.remove('active'));
+    }
 
     // 显示面板
     paramsPanel.hidden = false;
@@ -251,6 +350,18 @@
 
   formatSelect.addEventListener('change', compress);
 
+  // 证件照背景色
+  colorOptions.addEventListener('click', (e) => {
+    const swatch = e.target.closest('.color-swatch');
+    if (!swatch) return;
+
+    colorOptions.querySelectorAll('.color-swatch').forEach((c) => c.classList.remove('active'));
+    swatch.classList.add('active');
+
+    state.bgColor = swatch.getAttribute('data-color') || '';
+    compress();
+  });
+
   // 尺寸快捷选项
   presetList.addEventListener('click', (e) => {
     const chip = e.target.closest('.preset-chip');
@@ -316,9 +427,12 @@
     state.file = null;
     state.originalDataUrl = '';
     state.compressedDataUrl = '';
+    state.bgColor = '';
     fileInput.value = '';
     paramsPanel.hidden = true;
     previewPanel.hidden = true;
+    bgColorRow.hidden = true;
+    colorOptions.querySelectorAll('.color-swatch').forEach((c) => c.classList.remove('active'));
     originalImg.src = '';
     compressedImg.src = '';
     originalMeta.textContent = '-';
